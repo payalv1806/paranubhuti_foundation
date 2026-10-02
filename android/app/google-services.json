@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "262684968346",
+    "project_id": "birthday-for-a-cause-15940",
+    "storage_bucket": "birthday-for-a-cause-15940.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:262684968346:android:3216a7d53df996c0bae623",
+        "android_client_info": {
+          "package_name": "com.example.paranubhutifoundation"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNvX03qMZmYtCM2bNi7xY4I7SqE1TgNdc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
