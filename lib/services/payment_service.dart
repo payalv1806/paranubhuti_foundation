@@ -53,7 +53,7 @@ class PaymentService {
       'key': razorpayKeyId,
       'amount': (amount * 100).round(), // Razorpay expects paise, not rupees
       'currency': 'INR',
-      'name': 'Birthday Cause',
+      'name': 'Birthday for cause',
       'description': 'Donation to $causeId',
       'prefill': {
         if (contactPhone != null && contactPhone.isNotEmpty) 'contact': contactPhone,

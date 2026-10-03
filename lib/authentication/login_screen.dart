@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -64,26 +65,38 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException (Google): [${e.code}] ${e.message}');
       if (e.code != 'popup-closed-by-user' && e.code != 'canceled') {
-        setState(() => _errorMessage = _friendlyAuthError(e.code));
+        setState(() => _errorMessage = _friendlyAuthError(e.code, fallbackMessage: e.message));
       }
     } on FirebaseException catch (e) {
+      debugPrint('FirebaseException (Google): [${e.code}] ${e.message}');
       setState(() => _errorMessage = 'Could not save your profile (${e.code}). Please try again.');
     } catch (e) {
-      setState(() => _errorMessage = 'Google sign-in failed. Please try again.');
+      debugPrint('General Exception (Google): $e');
+      setState(() => _errorMessage = 'Google sign-in failed. If using Netlify, please ensure popups are allowed and this domain is authorized in Firebase.');
     } finally {
       if (mounted) _setGoogleLoading(false);
     }
   }
 
   Future<void> _onSendOtp() async {
-    if (_phoneController.text.trim().isEmpty) {
-      setState(() => _errorMessage = 'Enter a valid phone number');
+    final rawDigits = _phoneController.text.trim().replaceAll(RegExp(r'[\s\-]'), '');
+    if (rawDigits.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your 10-digit mobile number');
       return;
     }
+
+    if (rawDigits.length != 10) {
+      setState(() => _errorMessage = 'Please enter exactly 10 digits after +91');
+      return;
+    }
+
+    final phone = '+91$rawDigits';
+
     _setLoading(true);
     await _authService.sendOtp(
-      phoneNumber: _phoneController.text.trim(),
+      phoneNumber: phone,
       codeSentCallback: (verificationId) {
         _setLoading(false);
         Navigator.push(
@@ -93,7 +106,12 @@ class _LoginScreenState extends State<LoginScreen> {
       },
       errorCallback: (message) {
         _setLoading(false);
-        setState(() => _errorMessage = message);
+        debugPrint('Phone Auth Error: $message');
+        if (message.contains('unauthorized-domain') || message.contains('domain')) {
+          setState(() => _errorMessage = 'Domain not authorized in Firebase. Add "paranubhutifoundation.netlify.app" to Firebase Authentication > Settings > Authorized domains.');
+        } else {
+          setState(() => _errorMessage = message);
+        }
       },
     );
   }
@@ -125,18 +143,20 @@ class _LoginScreenState extends State<LoginScreen> {
             (route) => false,
       );
     } on FirebaseAuthException catch (e) {
-      setState(() => _errorMessage = _friendlyAuthError(e.code));
+      debugPrint('FirebaseAuthException (Email): [${e.code}] ${e.message}');
+      setState(() => _errorMessage = _friendlyAuthError(e.code, fallbackMessage: e.message));
     } on FirebaseException catch (e) {
-      // Covers Firestore errors, e.g. permission-denied from security rules
+      debugPrint('FirebaseException (Email): [${e.code}] ${e.message}');
       setState(() => _errorMessage = 'Could not save your profile (${e.code}). Please try again.');
     } catch (e) {
+      debugPrint('General Exception (Email): $e');
       setState(() => _errorMessage = 'Something went wrong. Please try again.');
     } finally {
       _setLoading(false);
     }
   }
 
-  String _friendlyAuthError(String code) {
+  String _friendlyAuthError(String code, {String? fallbackMessage}) {
     switch (code) {
       case 'user-not-found':
         return 'No account found with that email. Try signing up instead.';
@@ -151,8 +171,16 @@ class _LoginScreenState extends State<LoginScreen> {
         return 'That email address looks invalid.';
       case 'account-exists-with-different-credential':
         return 'An account already exists with this email using a different sign-in method.';
+      case 'unauthorized-domain':
+        return 'Domain not authorized: Please add "paranubhutifoundation.netlify.app" to Firebase Console > Authentication > Settings > Authorized domains.';
+      case 'operation-not-allowed':
+        return 'This sign-in method is not enabled in Firebase Console. Please enable it under Authentication > Sign-in method.';
+      case 'network-request-failed':
+        return 'Network connection failed. Please check your internet connection.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please wait a moment and try again.';
       default:
-        return 'Something went wrong. Please try again.';
+        return fallbackMessage ?? 'Something went wrong. Please try again.';
     }
   }
 
@@ -191,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.gutter),
-            Text('Welcome to Birthday Cause', style: AppTextStyles.displayLgMobile.copyWith(fontSize: 26), textAlign: TextAlign.center),
+            Text('Welcome to Birthday for cause', style: AppTextStyles.displayLgMobile.copyWith(fontSize: 26), textAlign: TextAlign.center),
             const SizedBox(height: AppSpacing.unit),
             Text('Log in to register birthdays and track your giving.', style: AppTextStyles.bodyMd, textAlign: TextAlign.center),
 
@@ -352,9 +380,33 @@ class _LoginScreenState extends State<LoginScreen> {
         TextField(
           controller: _phoneController,
           keyboardType: TextInputType.phone,
-          decoration: const InputDecoration(
-            hintText: '+91 98765 43210',
-            prefixIcon: Icon(Icons.phone_android_rounded),
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(10),
+          ],
+          decoration: InputDecoration(
+            hintText: '9876543210',
+            prefixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(width: AppSpacing.gutter),
+                const Icon(Icons.phone_android_rounded, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  '+91',
+                  style: AppTextStyles.bodyMd.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                Container(
+                  height: 20,
+                  width: 1.2,
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  color: AppColors.outlineVariant,
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.sectionGap - AppSpacing.unit),

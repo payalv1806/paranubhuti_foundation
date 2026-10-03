@@ -15,7 +15,7 @@ import 'package:paranubhutifoundation/features/donation/presentation/screen/dona
 import 'package:paranubhutifoundation/features/home/presentation/screens/notification_screen.dart';
 import 'package:paranubhutifoundation/features/home/presentation/screens/create_fundraiser_screen.dart';
 
-/// Home screen — matches the "Birthday Cause" Stitch design:
+/// Home screen — matches the "Birthday for cause" Stitch design:
 /// header → headline → Your Birthday card → Someone Special card →
 /// Quick Actions (Donate Now / Share a Fundraiser) → Featured Cause.
 class HomeScreen extends StatelessWidget {
@@ -180,7 +180,7 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'Birthday Cause',
+            'Birthday for cause',
             style: AppTextStyles.headlineMd.copyWith(color: AppColors.primary, fontSize: 20),
           ),
         ],
@@ -532,7 +532,7 @@ class _FeaturedCauseCard extends StatelessWidget {
   }
 }
 
-/// Dynamic "Birthday for a Cause" social-proof message banner.
+/// Dynamic "Birthday for cause" social-proof message banner.
 /// Displays a daily random number between 1,500 and 2,000 that stays consistent
 /// throughout the entire day and automatically refreshes on the next day.
 class _DailySocialProofBanner extends StatefulWidget {

@@ -7,7 +7,7 @@ import 'package:paranubhutifoundation/core/theme/app_theme.dart';
 import 'package:paranubhutifoundation/features/home/presentation/screens/notification_screen.dart';
 
 /// Shared app bar used across every bottom-nav tab (Home, Causes, Profile).
-/// Shows the "🎉 Birthday Cause" title and a notification bell with a live
+/// Shows the "🎉 Birthday for cause" title and a notification bell with a live
 /// red badge counting birthdays currently inside their reminder window.
 ///
 /// Usage in any screen:
@@ -37,7 +37,7 @@ class AppBarScreen extends StatelessWidget implements PreferredSizeWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'Birthday Cause',
+            'Birthday for cause',
             style: AppTextStyles.headlineMd.copyWith(color: AppColors.primary, fontSize: 18),
           ),
         ],

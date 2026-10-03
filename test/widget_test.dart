@@ -15,11 +15,11 @@ void main() {
       MaterialApp(
         theme: AppTheme.lightTheme,
         home: const Scaffold(
-          body: Center(child: Text('Birthday Cause')),
+          body: Center(child: Text('Birthday for cause')),
         ),
       ),
     );
-    expect(find.text('Birthday Cause'), findsOneWidget);
+    expect(find.text('Birthday for cause'), findsOneWidget);
     expect(find.byType(MaterialApp), findsOneWidget);
   });
 }

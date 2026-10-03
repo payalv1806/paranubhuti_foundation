@@ -27,7 +27,7 @@ class BirthdayForACauseApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Birthday for a Cause',
+      title: 'Birthday for cause',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme.copyWith(
         textTheme: GoogleFonts.plusJakartaSansTextTheme(AppTheme.lightTheme.textTheme),

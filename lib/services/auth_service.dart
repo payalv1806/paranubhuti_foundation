@@ -47,7 +47,16 @@
             errorCallback('Sign-in succeeded but saving your profile failed. Please try logging in again.');
           }
         },
-        verificationFailed: (e) => errorCallback(e.message ?? 'Verification failed'),
+        verificationFailed: (e) {
+          final msg = e.message ?? '';
+          if (e.code == 'billing-not-enabled' || msg.contains('BILLING_NOT_ENABLED')) {
+            errorCallback('Firebase requires a Blaze plan for SMS OTP, or add test numbers in Firebase Console. You can also sign in with Email or Google.');
+          } else if (e.code == 'unauthorized-domain' || msg.contains('unauthorized-domain') || msg.contains('domain')) {
+            errorCallback('Domain not authorized: Please add "paranubhutifoundation.netlify.app" to Firebase Console > Authentication > Settings > Authorized domains.');
+          } else {
+            errorCallback(msg.isNotEmpty ? msg : 'Verification failed (${e.code})');
+          }
+        },
         codeSent: (verificationId, resendToken) {
           _verificationId = verificationId;
           codeSentCallback(verificationId);

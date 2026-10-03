@@ -134,7 +134,7 @@ class _RegisterBirthdayScreenState extends State<RegisterBirthdayScreen> {
         title: Row(
           children: [
             const Text('🎉 ', style: TextStyle(fontSize: 18)),
-            Text('Birthday Cause', style: AppTextStyles.headlineMd.copyWith(color: AppColors.primary, fontSize: 18)),
+            Text('Birthday for cause', style: AppTextStyles.headlineMd.copyWith(color: AppColors.primary, fontSize: 18)),
           ],
         ),
         actions: [

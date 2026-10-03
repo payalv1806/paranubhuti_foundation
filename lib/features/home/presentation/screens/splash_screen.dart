@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:paranubhutifoundation/config/constants/app_constant.dart';
-import 'package:paranubhutifoundation/features/home/presentation/screens/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -76,22 +75,17 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _startAnimation() async {
-    await _logoController.forward();
+    try {
+      if (!mounted) return;
+      await _logoController.forward();
 
-    await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
 
-    await _textController.forward();
-
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (!mounted) return;
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const HomeScreen(),
-      ),
-    );
+      await _textController.forward();
+    } catch (_) {
+      // Controller was disposed during navigation/auth state change; safe to ignore
+    }
   }
 
   @override
