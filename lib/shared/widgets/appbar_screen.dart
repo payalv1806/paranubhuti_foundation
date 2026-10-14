@@ -5,6 +5,8 @@ import 'package:paranubhutifoundation/core/theme/app_colors.dart';
 import 'package:paranubhutifoundation/core/theme/app_text_styles.dart';
 import 'package:paranubhutifoundation/core/theme/app_theme.dart';
 import 'package:paranubhutifoundation/features/home/presentation/screens/notification_screen.dart';
+import 'package:paranubhutifoundation/services/admin_service.dart';
+import 'package:paranubhutifoundation/features/admin/presentation/screens/admin_dashboard_screen.dart';
 
 /// Shared app bar used across every bottom-nav tab (Home, Causes, Profile).
 /// Shows the "🎉 Birthday for cause" title and a notification bell with a live
@@ -43,6 +45,17 @@ class AppBarScreen extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
+        if (AdminService.isAdmin)
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings_rounded, color: AppColors.primary),
+            tooltip: 'Admin Dashboard',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+              );
+            },
+          ),
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: uid == null
               ? null

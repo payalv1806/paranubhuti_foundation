@@ -68,4 +68,57 @@ class AppColors {
   /// Soft ambient shadow tint used on Level-1 cards (10% opacity Coral),
   /// per the "Elevation & Depth" section of DESIGN.md.
   static Color cardShadow = primary.withValues(alpha: 0.10);
+
+  // ─── Dynamic UI Enhancements ───────────────────────────────────────
+  // Gradient definitions for hero sections and cards
+  static const LinearGradient heroGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFFFEFCCF),
+      Color(0xFFFFDBCF),
+      Color(0xFFFFE8DD),
+    ],
+  );
+
+  static const LinearGradient primaryGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFFA43C12),
+      Color(0xFFFF7F50),
+    ],
+  );
+
+  static const LinearGradient splashGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFFFFFFFF),
+      Color(0xFFFFF5EE),
+      Color(0xFFFFDBCF),
+    ],
+  );
+
+  static const LinearGradient cardGlowGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0x10A43C12),
+      Color(0x05FF7F50),
+    ],
+  );
+
+  static const LinearGradient tertiaryGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF006A62),
+      Color(0xFF00B8AA),
+    ],
+  );
+
+  // Glow / shimmer helpers
+  static Color primaryGlow = primary.withValues(alpha: 0.25);
+  static Color tertiaryGlow = tertiary.withValues(alpha: 0.20);
 }

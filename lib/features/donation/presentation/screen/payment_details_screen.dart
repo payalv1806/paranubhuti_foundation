@@ -96,6 +96,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
           causeTitle: widget.causeTitle,
           amount: widget.amount,
           anonymous: _isAnonymous,
+          donationId: donationId,
         ),
       ),
     );

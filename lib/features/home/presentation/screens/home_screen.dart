@@ -14,12 +14,73 @@ import 'package:paranubhutifoundation/features/home/presentation/screens/registe
 import 'package:paranubhutifoundation/features/donation/presentation/screen/donate_screen.dart';
 import 'package:paranubhutifoundation/features/home/presentation/screens/notification_screen.dart';
 import 'package:paranubhutifoundation/features/home/presentation/screens/create_fundraiser_screen.dart';
+import 'package:paranubhutifoundation/services/admin_service.dart';
+import 'package:paranubhutifoundation/features/admin/presentation/screens/admin_dashboard_screen.dart';
 
 /// Home screen — matches the "Birthday for cause" Stitch design:
 /// header → headline → Your Birthday card → Someone Special card →
 /// Quick Actions (Donate Now / Share a Fundraiser) → Featured Cause.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  late AnimationController _staggerController;
+  late List<Animation<double>> _fadeAnimations;
+  late List<Animation<Offset>> _slideAnimations;
+
+  @override
+  void initState() {
+    super.initState();
+    _staggerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
+
+    // Create staggered animations for 6 elements
+    _fadeAnimations = List.generate(6, (i) {
+      final start = i * 0.12;
+      final end = (start + 0.4).clamp(0.0, 1.0);
+      return Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(
+          parent: _staggerController,
+          curve: Interval(start, end, curve: Curves.easeOut),
+        ),
+      );
+    });
+
+    _slideAnimations = List.generate(6, (i) {
+      final start = i * 0.12;
+      final end = (start + 0.4).clamp(0.0, 1.0);
+      return Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(
+        CurvedAnimation(
+          parent: _staggerController,
+          curve: Interval(start, end, curve: Curves.easeOutCubic),
+        ),
+      );
+    });
+
+    _staggerController.forward();
+  }
+
+  @override
+  void dispose() {
+    _staggerController.dispose();
+    super.dispose();
+  }
+
+  Widget _staggerChild(int index, Widget child) {
+    return FadeTransition(
+      opacity: _fadeAnimations[index.clamp(0, 5)],
+      child: SlideTransition(
+        position: _slideAnimations[index.clamp(0, 5)],
+        child: child,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,21 +95,27 @@ class HomeScreen extends StatelessWidget {
             vertical: AppSpacing.unit * 2,
           ),
           children: [
-            Text(
-              'CELEBRATE WITH PURPOSE',
-              style: AppTextStyles.labelCaps.copyWith(color: AppColors.primary),
-            ),
-            const SizedBox(height: AppSpacing.unit),
-            Text('Make your day mean more.', style: AppTextStyles.displayLgMobile),
+            // Hero section with gradient
+            _staggerChild(0, _buildHeroSection()),
+
+            if (AdminService.isAdmin) ...[
+              const SizedBox(height: AppSpacing.gutter),
+              const _AdminQuickBanner(),
+            ],
 
             const SizedBox(height: AppSpacing.gutter * 1.2),
 
             // Daily Social Proof Message
-            const _DailySocialProofBanner(),
+            _staggerChild(1, const _DailySocialProofBanner()),
+
+            const SizedBox(height: AppSpacing.gutter),
+
+            // Latest Community Announcement Banner
+            const _LatestAnnouncementBanner(),
 
             const SizedBox(height: AppSpacing.sectionGap - AppSpacing.unit),
 
-            _ActionCard(
+            _staggerChild(2, _AnimatedActionCard(
               icon: Icons.cake_rounded,
               iconColor: AppColors.primary,
               title: 'Your birthday',
@@ -63,10 +130,10 @@ class HomeScreen extends StatelessWidget {
                   );
                 },
               ),
-            ),
+            )),
             const SizedBox(height: AppSpacing.gutter),
 
-            _ActionCard(
+            _staggerChild(3, _AnimatedActionCard(
               icon: Icons.groups_rounded,
               iconColor: AppColors.tertiary,
               title: 'Someone special?',
@@ -81,72 +148,128 @@ class HomeScreen extends StatelessWidget {
                   );
                 },
               ),
-            ),
+            )),
 
             const SizedBox(height: AppSpacing.sectionGap),
 
-            Text('Quick Actions', style: AppTextStyles.headlineMd),
-            const SizedBox(height: AppSpacing.gutter),
-
-            _QuickActionTile(
-              backgroundColor: AppColors.secondaryContainer,
-              icon: Icons.volunteer_activism_rounded,
-              title: 'Donate Now',
-              description: 'Support a trending cause immediately.',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const DonateScreen()),
-                );
-              },
-            ),
-            const SizedBox(height: AppSpacing.gutter),
-            _QuickActionTile(
-              backgroundColor: AppColors.primaryContainer,
-              icon: Icons.ios_share_rounded,
-              title: 'Share a Fundraiser',
-              description: 'Invite friends to join a celebration of giving.',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CreateFundraiserScreen()),
-                );
-              },
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            _staggerChild(4, Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Featured Cause', style: AppTextStyles.headlineMd),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, RoutesNames.causes);
+                Text('Quick Actions', style: AppTextStyles.headlineMd),
+                const SizedBox(height: AppSpacing.gutter),
 
+                _QuickActionTile(
+                  backgroundColor: AppColors.secondaryContainer,
+                  icon: Icons.volunteer_activism_rounded,
+                  title: 'Donate Now',
+                  description: 'Support a trending cause immediately.',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DonateScreen()),
+                    );
                   },
-                  child: Text(
-                    'See All',
-                    style: AppTextStyles.bodyMd.copyWith(color: AppColors.primary),
-                  ),
+                ),
+                const SizedBox(height: AppSpacing.gutter),
+                _QuickActionTile(
+                  backgroundColor: AppColors.primaryContainer,
+                  icon: Icons.ios_share_rounded,
+                  title: 'Share a Fundraiser',
+                  description: 'Invite friends to join a celebration of giving.',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CreateFundraiserScreen()),
+                    );
+                  },
                 ),
               ],
-            ),
-            const SizedBox(height: AppSpacing.gutter),
+            )),
 
-            const _FeaturedCauseCard(
-              tag: 'Education',
-              imagePath: 'assets/images/education.jpg',
-              title: 'Birthday Books for All',
-              description:
-              'Help us provide 1,000 books to children in underserved communities this month.',
-              amountRaised: 4200,
-              goalAmount: 5000,
-            ),
+            const SizedBox(height: AppSpacing.sectionGap),
+
+            _staggerChild(5, Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Featured Cause', style: AppTextStyles.headlineMd),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, RoutesNames.causes);
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'See All',
+                            style: AppTextStyles.bodyMd.copyWith(color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.gutter),
+
+                const _FeaturedCauseCard(
+                  tag: 'Education',
+                  imagePath: 'assets/images/education.jpg',
+                  title: 'Birthday Books for All',
+                  description:
+                  'Help us provide 1,000 books to children in underserved communities this month.',
+                  amountRaised: 4200,
+                  goalAmount: 5000,
+                ),
+              ],
+            )),
 
             const SizedBox(height: AppSpacing.sectionGap),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeroSection() {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.gutter),
+      decoration: BoxDecoration(
+        gradient: AppColors.heroGradient,
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        border: Border.all(
+          color: AppColors.primaryContainer.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
+            child: Text(
+              '✨ CELEBRATE WITH PURPOSE',
+              style: AppTextStyles.labelCaps.copyWith(
+                color: Colors.white,
+                fontSize: 11,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.gutter),
+          Text(
+            'Make your day\nmean more.',
+            style: AppTextStyles.displayLgMobile.copyWith(
+              height: 1.15,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -186,6 +309,17 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
+        if (AdminService.isAdmin)
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings_rounded, color: AppColors.primary),
+            tooltip: 'Admin Dashboard',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+              );
+            },
+          ),
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: uid == null
               ? null
@@ -212,19 +346,7 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                   Positioned(
                     top: 6,
                     right: 6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: AppColors.error,
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                      ),
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                      child: Text(
-                        '$dueCount',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
-                      ),
-                    ),
+                    child: _PulsingBadge(count: dueCount),
                   ),
               ],
             );
@@ -262,16 +384,75 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
-/// White card used for "Your birthday" / "Someone special?" — icon, title,
-/// description, and a CTA button slot.
-class _ActionCard extends StatelessWidget {
+/// Pulsing notification badge — draws attention with a gentle scale animation.
+class _PulsingBadge extends StatefulWidget {
+  final int count;
+  const _PulsingBadge({required this.count});
+
+  @override
+  State<_PulsingBadge> createState() => _PulsingBadgeState();
+}
+
+class _PulsingBadgeState extends State<_PulsingBadge> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: 1.0 + (_controller.value * 0.15),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              color: AppColors.error,
+              borderRadius: BorderRadius.circular(AppRadius.full),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.error.withValues(alpha: 0.4 * _controller.value),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+            child: Text(
+              '${widget.count}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// White card with hover / tap scale effect — used for "Your birthday" / "Someone special?"
+class _AnimatedActionCard extends StatefulWidget {
   final IconData icon;
   final Color iconColor;
   final String title;
   final String description;
   final Widget button;
 
-  const _ActionCard({
+  const _AnimatedActionCard({
     required this.icon,
     required this.iconColor,
     required this.title,
@@ -280,29 +461,109 @@ class _ActionCard extends StatelessWidget {
   });
 
   @override
+  State<_AnimatedActionCard> createState() => _AnimatedActionCardState();
+}
+
+class _AnimatedActionCardState extends State<_AnimatedActionCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _hoverController;
+  bool _hovering = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hoverController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+  }
+
+  @override
+  void dispose() {
+    _hoverController.dispose();
+    super.dispose();
+  }
+
+  void _onHover(bool hovering) {
+    setState(() => _hovering = hovering);
+    if (hovering) {
+      _hoverController.forward();
+    } else {
+      _hoverController.reverse();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sectionGap - AppSpacing.unit),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 28, color: iconColor),
-            const SizedBox(height: AppSpacing.gutter),
-            Text(title, style: AppTextStyles.headlineMd),
-            const SizedBox(height: AppSpacing.unit),
-            Text(description, style: AppTextStyles.bodyMd),
-            const SizedBox(height: AppSpacing.sectionGap - AppSpacing.unit),
-            SizedBox(width: double.infinity, child: button),
-          ],
-        ),
+    return MouseRegion(
+      onEnter: (_) => _onHover(true),
+      onExit: (_) => _onHover(false),
+      child: AnimatedBuilder(
+        animation: _hoverController,
+        builder: (context, child) {
+          final scale = 1.0 + (_hoverController.value * 0.02);
+          return Transform.scale(
+            scale: scale,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(AppRadius.xxl),
+                border: Border.all(
+                  color: _hovering
+                      ? widget.iconColor.withValues(alpha: 0.3)
+                      : Colors.transparent,
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _hovering
+                        ? widget.iconColor.withValues(alpha: 0.12)
+                        : AppColors.cardShadow,
+                    blurRadius: _hovering ? 20 : 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.sectionGap - AppSpacing.unit),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Animated icon container with gradient background
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            widget.iconColor.withValues(alpha: _hovering ? 0.2 : 0.1),
+                            widget.iconColor.withValues(alpha: _hovering ? 0.08 : 0.04),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                      ),
+                      child: Icon(widget.icon, size: 28, color: widget.iconColor),
+                    ),
+                    const SizedBox(height: AppSpacing.gutter),
+                    Text(widget.title, style: AppTextStyles.headlineMd),
+                    const SizedBox(height: AppSpacing.unit),
+                    Text(widget.description, style: AppTextStyles.bodyMd),
+                    const SizedBox(height: AppSpacing.sectionGap - AppSpacing.unit),
+                    SizedBox(width: double.infinity, child: widget.button),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-/// Solid coral pill button, e.g. "Add your birthday →"
-class _FilledPillButton extends StatelessWidget {
+/// Solid coral pill button with hover glow, e.g. "Add your birthday →"
+class _FilledPillButton extends StatefulWidget {
   final String label;
   final IconData? trailingIcon;
   final VoidCallback onPressed;
@@ -310,20 +571,53 @@ class _FilledPillButton extends StatelessWidget {
   const _FilledPillButton({required this.label, required this.onPressed, this.trailingIcon});
 
   @override
+  State<_FilledPillButton> createState() => _FilledPillButtonState();
+}
+
+class _FilledPillButtonState extends State<_FilledPillButton> {
+  bool _hovering = false;
+
+  @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Flexible(
-            child: Text(label, overflow: TextOverflow.ellipsis),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          boxShadow: _hovering
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: ElevatedButton(
+          onPressed: widget.onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _hovering ? AppColors.primaryContainer : null,
           ),
-          if (trailingIcon != null) ...[
-            const SizedBox(width: AppSpacing.unit),
-            Icon(trailingIcon, size: 18),
-          ],
-        ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(widget.label, overflow: TextOverflow.ellipsis),
+              ),
+              if (widget.trailingIcon != null) ...[
+                const SizedBox(width: AppSpacing.unit),
+                AnimatedPadding(
+                  duration: const Duration(milliseconds: 200),
+                  padding: EdgeInsets.only(left: _hovering ? 4.0 : 0.0),
+                  child: Icon(widget.trailingIcon, size: 18),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -357,9 +651,8 @@ class _OutlinedPillButton extends StatelessWidget {
   }
 }
 
-/// Colored tappable tile used for Quick Actions ("Donate Now", "Share a
-/// Fundraiser") — background color passed in (secondaryContainer / primaryContainer).
-class _QuickActionTile extends StatelessWidget {
+/// Colored tappable tile with scale-on-tap animation — used for Quick Actions
+class _QuickActionTile extends StatefulWidget {
   final Color backgroundColor;
   final IconData icon;
   final String title;
@@ -375,46 +668,111 @@ class _QuickActionTile extends StatelessWidget {
   });
 
   @override
+  State<_QuickActionTile> createState() => _QuickActionTileState();
+}
+
+class _QuickActionTileState extends State<_QuickActionTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _tapController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _tapController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _tapController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _tapController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.xxl),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.gutter + AppSpacing.unit),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(AppRadius.xxl),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.unit),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest.withValues(alpha: 0.5),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: AppColors.onSurface, size: 22),
+    return GestureDetector(
+      onTapDown: (_) => _tapController.forward(),
+      onTapUp: (_) {
+        _tapController.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _tapController.reverse(),
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: child,
+          );
+        },
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.gutter + AppSpacing.unit),
+            decoration: BoxDecoration(
+              color: widget.backgroundColor,
+              borderRadius: BorderRadius.circular(AppRadius.xxl),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.backgroundColor.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            const SizedBox(width: AppSpacing.gutter),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.headlineMd.copyWith(fontSize: 18, color: AppColors.onSurface),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.unit + 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLowest.withValues(alpha: 0.7),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    description,
-                    style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface.withValues(alpha: 0.75)),
+                  child: Icon(widget.icon, color: AppColors.onSurface, size: 22),
+                ),
+                const SizedBox(width: AppSpacing.gutter),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: AppTextStyles.headlineMd.copyWith(fontSize: 18, color: AppColors.onSurface),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.description,
+                        style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurface.withValues(alpha: 0.75)),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    color: AppColors.onSurface.withValues(alpha: 0.5),
+                    size: 20,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -422,8 +780,8 @@ class _QuickActionTile extends StatelessWidget {
 }
 
 /// Featured cause card — image with a category tag, title, description,
-/// and a "$X raised / Goal: $Y" progress bar.
-class _FeaturedCauseCard extends StatelessWidget {
+/// and an animated "raised / Goal" progress bar.
+class _FeaturedCauseCard extends StatefulWidget {
   final String tag;
   final String imagePath;
   final String title;
@@ -440,7 +798,40 @@ class _FeaturedCauseCard extends StatelessWidget {
     required this.goalAmount,
   });
 
-  double get _progress => goalAmount <= 0 ? 0 : (amountRaised / goalAmount).clamp(0, 1);
+  @override
+  State<_FeaturedCauseCard> createState() => _FeaturedCauseCardState();
+}
+
+class _FeaturedCauseCardState extends State<_FeaturedCauseCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _progressController;
+  late Animation<double> _progressAnimation;
+  bool _hovering = false;
+
+  double get _progress => widget.goalAmount <= 0 ? 0 : (widget.amountRaised / widget.goalAmount).clamp(0, 1);
+
+  @override
+  void initState() {
+    super.initState();
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _progressAnimation = Tween<double>(begin: 0, end: _progress).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeOutCubic),
+    );
+
+    // Delay to let the stagger animation complete before showing the progress bar
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) _progressController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _progressController.dispose();
+    super.dispose();
+  }
 
   String _formatAmount(double value) {
     return value % 1 == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(2);
@@ -448,85 +839,161 @@ class _FeaturedCauseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              Image.asset(
-                imagePath,
-                height: 160,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  height: 160,
-                  color: AppColors.surfaceContainerHigh,
-                  child: Icon(Icons.image_rounded, color: AppColors.onSurfaceVariant, size: 40),
-                ),
-              ),
-              Positioned(
-                top: AppSpacing.unit,
-                left: AppSpacing.unit,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                  child: Text(
-                    tag,
-                    style: AppTextStyles.labelCaps.copyWith(color: AppColors.onTertiaryContainer),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.gutter),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        transform: Matrix4.diagonal3Values(_hovering ? 1.015 : 1.0, _hovering ? 1.015 : 1.0, 1.0),
+        transformAlignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(AppRadius.xxl),
+          boxShadow: [
+            BoxShadow(
+              color: _hovering
+                  ? AppColors.primary.withValues(alpha: 0.15)
+                  : AppColors.cardShadow,
+              blurRadius: _hovering ? 24 : 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image with parallax-like overlay
+            Stack(
               children: [
-                Text(title, style: AppTextStyles.headlineMd.copyWith(fontSize: 18)),
-                const SizedBox(height: AppSpacing.unit),
-                Text(description, style: AppTextStyles.bodyMd),
-                const SizedBox(height: AppSpacing.gutter),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '₹${_formatAmount(amountRaised)} raised',
-                      style: AppTextStyles.bodyMd.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                        fontSize: 13,
-                      ),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  height: _hovering ? 175 : 160,
+                  width: double.infinity,
+                  child: Image.asset(
+                    widget.imagePath,
+                    height: _hovering ? 175 : 160,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      height: 160,
+                      color: AppColors.surfaceContainerHigh,
+                      child: Icon(Icons.image_rounded, color: AppColors.onSurfaceVariant, size: 40),
                     ),
-                    Text(
-                      'Goal: ₹${_formatAmount(goalAmount)}',
-                      style: AppTextStyles.bodyMd.copyWith(
-                        color: AppColors.onSurfaceVariant,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.unit),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                  child: LinearProgressIndicator(
-                    value: _progress,
-                    minHeight: 10,
-                    backgroundColor: AppColors.surfaceContainerHigh,
-                    valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                // Gradient overlay
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.15),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: AppSpacing.unit,
+                  left: AppSpacing.unit,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      widget.tag,
+                      style: AppTextStyles.labelCaps.copyWith(color: AppColors.onTertiaryContainer),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.gutter),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.title, style: AppTextStyles.headlineMd.copyWith(fontSize: 18)),
+                  const SizedBox(height: AppSpacing.unit),
+                  Text(widget.description, style: AppTextStyles.bodyMd),
+                  const SizedBox(height: AppSpacing.gutter),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '₹${_formatAmount(widget.amountRaised)} raised',
+                        style: AppTextStyles.bodyMd.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        'Goal: ₹${_formatAmount(widget.goalAmount)}',
+                        style: AppTextStyles.bodyMd.copyWith(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.unit),
+
+                  // Animated progress bar
+                  AnimatedBuilder(
+                    animation: _progressAnimation,
+                    builder: (context, _) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                        child: Stack(
+                          children: [
+                            Container(
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceContainerHigh,
+                                borderRadius: BorderRadius.circular(AppRadius.full),
+                              ),
+                            ),
+                            FractionallySizedBox(
+                              widthFactor: _progressAnimation.value,
+                              child: Container(
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  gradient: AppColors.primaryGradient,
+                                  borderRadius: BorderRadius.circular(AppRadius.full),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(alpha: 0.3),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -542,14 +1009,26 @@ class _DailySocialProofBanner extends StatefulWidget {
   State<_DailySocialProofBanner> createState() => _DailySocialProofBannerState();
 }
 
-class _DailySocialProofBannerState extends State<_DailySocialProofBanner> {
+class _DailySocialProofBannerState extends State<_DailySocialProofBanner>
+    with SingleTickerProviderStateMixin {
   int? _dailyCount;
   int _templateIndex = 0;
+  late AnimationController _shimmerController;
 
   @override
   void initState() {
     super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
     _loadDailyCount();
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
   }
 
   String _getTodayKey() {
@@ -628,68 +1107,304 @@ class _DailySocialProofBannerState extends State<_DailySocialProofBanner> {
         ? 'celebrating their birthdays by donating to a cause today.'
         : 'making their birthdays meaningful by supporting a cause today.';
 
+    return AnimatedBuilder(
+      animation: _shimmerController,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.16),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.cardShadow,
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.gutter,
+            vertical: AppSpacing.unit * 1.5,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Pulsing emoji container
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.9, end: 1.1),
+                duration: const Duration(milliseconds: 2000),
+                curve: Curves.easeInOut,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: child,
+                  );
+                },
+                onEnd: () {}, // TweenAnimationBuilder runs once; the shimmer controller adds life
+                child: Container(
+                  height: 44,
+                  width: 44,
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      colors: [
+                        AppColors.primaryFixed.withValues(alpha: 0.9),
+                        AppColors.primaryFixed.withValues(alpha: 0.4),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    emoji,
+                    style: const TextStyle(fontSize: 22),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.unit * 1.5),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    style: AppTextStyles.bodyMd.copyWith(
+                      color: AppColors.onSurface,
+                      height: 1.35,
+                      fontSize: 13.5,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '$formattedCount ',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'people are $actionText',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Admin Quick Banner — displayed exclusively for the authorized admin (info@paranubhutifoundation.org).
+class _AdminQuickBanner extends StatelessWidget {
+  const _AdminQuickBanner();
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.all(AppSpacing.gutter),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.16),
-          width: 1.2,
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryContainer.withValues(alpha: 0.9),
+            AppColors.secondaryContainer.withValues(alpha: 0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 14,
+            color: AppColors.primary.withValues(alpha: 0.08),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.gutter,
-        vertical: AppSpacing.unit * 1.5,
-      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            height: 40,
-            width: 40,
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.primaryFixed.withValues(alpha: 0.7),
-              shape: BoxShape.circle,
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            alignment: Alignment.center,
-            child: Text(
-              emoji,
-              style: const TextStyle(fontSize: 20),
+            child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: AppSpacing.gutter),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Admin Portal',
+                      style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
+                      child: const Text(
+                        'AUTHORIZED',
+                        style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Manage notification emails & announcements',
+                  style: AppTextStyles.bodyMd.copyWith(fontSize: 12, color: AppColors.onSurfaceVariant),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: AppSpacing.unit * 1.5),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: AppTextStyles.bodyMd.copyWith(
-                  color: AppColors.onSurface,
-                  height: 1.35,
-                  fontSize: 13.5,
-                ),
-                children: [
-                  TextSpan(
-                    text: '$formattedCount ',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'people are $actionText',
-                  ),
-                ],
-              ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
             ),
+            child: const Text('Open'),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Community Announcements Banner — displays the latest announcement for all users.
+class _LatestAnnouncementBanner extends StatelessWidget {
+  const _LatestAnnouncementBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('announcements')
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final doc = snapshot.data!.docs.first;
+        final data = doc.data();
+        final title = data['title'] as String? ?? 'Foundation Update';
+        final content = data['content'] as String? ?? '';
+        final category = data['category'] as String? ?? 'General';
+
+        return Container(
+          padding: const EdgeInsets.all(AppSpacing.gutter),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.25),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryContainer,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: const Icon(Icons.campaign_rounded, size: 18, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'COMMUNITY ANNOUNCEMENT',
+                    style: AppTextStyles.labelCaps.copyWith(color: AppColors.primary, fontSize: 11),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondaryContainer.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                    child: Text(
+                      category.toUpperCase(),
+                      style: AppTextStyles.labelCaps.copyWith(color: AppColors.secondary, fontSize: 9.5),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w700, fontSize: 14.5),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                content,
+                style: AppTextStyles.bodyMd.copyWith(
+                  fontSize: 12.5,
+                  color: AppColors.onSurfaceVariant,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.primary),
+                  label: Text(
+                    'View all updates',
+                    style: AppTextStyles.bodyMd.copyWith(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(50, 24),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

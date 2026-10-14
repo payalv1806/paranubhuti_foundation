@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:paranubhutifoundation/services/certificate_service.dart';
 
 /// Wraps the Razorpay checkout flow and the Firestore side-effects of a
 /// donation: writes a `donations/{id}` doc as `pending` before opening
@@ -101,6 +102,11 @@ class PaymentService {
           'razorpayPaymentId': response.paymentId,
         });
       }
+
+      // Automatically generate verified donation certificate
+      try {
+        await CertificateService().generateOrGetCertificate(donationId);
+      } catch (_) {}
 
       onSuccess?.call(donationId);
     } catch (e) {

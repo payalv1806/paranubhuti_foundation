@@ -20,7 +20,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _authService = AuthService();
 
   _LoginMode _mode = _LoginMode.phone;
@@ -34,12 +35,36 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
 
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic),
+    );
+    _fadeController.forward();
+  }
+
   @override
   void dispose() {
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -187,160 +212,202 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.marginMobile,
-            vertical: AppSpacing.sectionGap,
-          ),
-          children: [
-            Center(
-              child: Container(
-                height: 84,
-                width: 84,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.18),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: AppColors.splashGradient,
+        ),
+        child: SafeArea(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.marginMobile,
+                  vertical: AppSpacing.sectionGap,
                 ),
-                child: Image.asset(
-                  'assets/images/Ngo_Logo.png',
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Icon(Icons.volunteer_activism_rounded, size: 44, color: AppColors.primary),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.gutter),
-            Text('Welcome to Birthday for cause', style: AppTextStyles.displayLgMobile.copyWith(fontSize: 26), textAlign: TextAlign.center),
-            const SizedBox(height: AppSpacing.unit),
-            Text('Log in to register birthdays and track your giving.', style: AppTextStyles.bodyMd, textAlign: TextAlign.center),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-
-            // Phone / Email toggle
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              padding: const EdgeInsets.all(4),
-              child: Row(
                 children: [
-                  Expanded(child: _modeTab('Phone', _LoginMode.phone)),
-                  Expanded(child: _modeTab('Email', _LoginMode.email)),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-
-            Card(
-              elevation: 0,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                side: BorderSide(color: AppColors.surfaceContainerHigh),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.gutter * 1.2),
-                child: _mode == _LoginMode.phone ? _buildPhoneForm() : _buildEmailForm(),
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.gutter),
-
-            // Google Sign-In Separator
-            Row(
-              children: [
-                Expanded(child: Divider(color: AppColors.outlineVariant.withValues(alpha: 0.6))),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-                  child: Text(
-                    'OR',
-                    style: AppTextStyles.labelCaps.copyWith(color: AppColors.onSurfaceVariant),
-                  ),
-                ),
-                Expanded(child: Divider(color: AppColors.outlineVariant.withValues(alpha: 0.6))),
-              ],
-            ),
-
-            const SizedBox(height: AppSpacing.gutter),
-
-            // Sign in with Google Button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: (_isLoading || _isGoogleLoading) ? null : _onGoogleSignIn,
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.onSurface,
-                  side: const BorderSide(color: AppColors.surfaceContainerHighest, width: 1.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: AppSpacing.unit * 1.8,
-                  ),
-                  elevation: 1,
-                  shadowColor: AppColors.cardShadow,
-                ),
-                child: _isGoogleLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CustomPaint(
-                            size: const Size(20, 20),
-                            painter: _GoogleLogoPainter(),
+                  // Logo with enhanced glow
+                  Center(
+                    child: Container(
+                      height: 90,
+                      width: 90,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.18),
+                            blurRadius: 28,
+                            offset: const Offset(0, 4),
                           ),
-                          const SizedBox(width: AppSpacing.gutter),
-                          Text(
-                            'Sign in with Google',
-                            style: AppTextStyles.buttonText.copyWith(
-                              color: AppColors.onSurface,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          BoxShadow(
+                            color: AppColors.primaryContainer.withValues(alpha: 0.12),
+                            blurRadius: 50,
+                            spreadRadius: 10,
                           ),
                         ],
                       ),
-              ),
-            ),
+                      child: Image.asset(
+                        'assets/images/Ngo_Logo.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => const Icon(Icons.volunteer_activism_rounded, size: 44, color: AppColors.primary),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.gutter),
 
-            if (_errorMessage != null) ...[
-              const SizedBox(height: AppSpacing.gutter),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.unit * 1.5),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.input),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
-                    const SizedBox(width: AppSpacing.unit),
-                    Expanded(
-                      child: Text(
-                        _errorMessage!,
-                        style: AppTextStyles.bodyMd.copyWith(color: AppColors.error, fontSize: 13),
+                  // Title with gradient text
+                  ShaderMask(
+                    shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
+                    child: Text(
+                      'Welcome to\nBirthday for cause',
+                      style: AppTextStyles.displayLgMobile.copyWith(
+                        fontSize: 28,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.unit),
+                  Text(
+                    'Log in to register birthdays and track your giving.',
+                    style: AppTextStyles.bodyMd,
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: AppSpacing.sectionGap),
+
+                  // Phone / Email toggle — enhanced with animation
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.cardShadow,
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        Expanded(child: _modeTab('Phone', _LoginMode.phone)),
+                        Expanded(child: _modeTab('Email', _LoginMode.email)),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.sectionGap),
+
+                  // Form card with glassmorphism effect
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(AppRadius.card),
+                      border: Border.all(color: AppColors.surfaceContainerHigh.withValues(alpha: 0.5)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.cardShadow,
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.gutter * 1.2),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        transitionBuilder: (child, animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.05, 0),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _mode == _LoginMode.phone
+                            ? _buildPhoneForm()
+                            : _buildEmailForm(),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.gutter),
+
+                  // Google Sign-In Separator
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: AppColors.outlineVariant.withValues(alpha: 0.6))),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+                        child: Text(
+                          'OR',
+                          style: AppTextStyles.labelCaps.copyWith(color: AppColors.onSurfaceVariant),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: AppColors.outlineVariant.withValues(alpha: 0.6))),
+                    ],
+                  ),
+
+                  const SizedBox(height: AppSpacing.gutter),
+
+                  // Sign in with Google Button — enhanced with hover effect
+                  _GoogleSignInButton(
+                    isLoading: _isGoogleLoading,
+                    isDisabled: _isLoading || _isGoogleLoading,
+                    onPressed: _onGoogleSignIn,
+                  ),
+
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: AppSpacing.gutter),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: 0.95 + (value * 0.05),
+                          child: Opacity(opacity: value, child: child),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.unit * 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppRadius.input),
+                          border: Border.all(
+                            color: AppColors.error.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
+                            const SizedBox(width: AppSpacing.unit),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: AppTextStyles.bodyMd.copyWith(color: AppColors.error, fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
-            ],
-          ],
+            ),
+          ),
         ),
       ),
     );
@@ -354,11 +421,22 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = null;
       }),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.unit * 1.5),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.transparent,
+          gradient: isSelected ? AppColors.primaryGradient : null,
+          color: isSelected ? null : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.full),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
         child: Text(
           label,
@@ -373,6 +451,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildPhoneForm() {
     return Column(
+      key: const ValueKey('phone'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('PHONE NUMBER', style: AppTextStyles.labelCaps.copyWith(color: AppColors.primary)),
@@ -412,11 +491,11 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: AppSpacing.sectionGap - AppSpacing.unit),
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton(
-            onPressed: (_isLoading || _isGoogleLoading) ? null : _onSendOtp,
-            child: _isLoading
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('Send OTP'),
+          child: _AnimatedSubmitButton(
+            isLoading: _isLoading,
+            isDisabled: _isLoading || _isGoogleLoading,
+            label: 'Send OTP',
+            onPressed: _onSendOtp,
           ),
         ),
       ],
@@ -425,6 +504,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildEmailForm() {
     return Column(
+      key: const ValueKey('email'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_isSignUp) ...[
@@ -465,11 +545,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton(
-            onPressed: (_isLoading || _isGoogleLoading) ? null : _onEmailSubmit,
-            child: _isLoading
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text(_isSignUp ? 'Create Account' : 'Log In'),
+          child: _AnimatedSubmitButton(
+            isLoading: _isLoading,
+            isDisabled: _isLoading || _isGoogleLoading,
+            label: _isSignUp ? 'Create Account' : 'Log In',
+            onPressed: _onEmailSubmit,
           ),
         ),
 
@@ -488,6 +568,148 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Submit button with loading state and hover glow effect.
+class _AnimatedSubmitButton extends StatefulWidget {
+  final bool isLoading;
+  final bool isDisabled;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _AnimatedSubmitButton({
+    required this.isLoading,
+    required this.isDisabled,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  State<_AnimatedSubmitButton> createState() => _AnimatedSubmitButtonState();
+}
+
+class _AnimatedSubmitButtonState extends State<_AnimatedSubmitButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          boxShadow: _hovering && !widget.isDisabled
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: ElevatedButton(
+          onPressed: widget.isDisabled ? null : widget.onPressed,
+          child: widget.isLoading
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : Text(widget.label),
+        ),
+      ),
+    );
+  }
+}
+
+/// Google Sign-In button with hover glow.
+class _GoogleSignInButton extends StatefulWidget {
+  final bool isLoading;
+  final bool isDisabled;
+  final VoidCallback onPressed;
+
+  const _GoogleSignInButton({
+    required this.isLoading,
+    required this.isDisabled,
+    required this.onPressed,
+  });
+
+  @override
+  State<_GoogleSignInButton> createState() => _GoogleSignInButtonState();
+}
+
+class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          boxShadow: _hovering && !widget.isDisabled
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: widget.isDisabled ? null : widget.onPressed,
+            style: OutlinedButton.styleFrom(
+              backgroundColor: _hovering ? const Color(0xFFF8F8F8) : Colors.white,
+              foregroundColor: AppColors.onSurface,
+              side: BorderSide(
+                color: _hovering ? AppColors.outline : AppColors.surfaceContainerHighest,
+                width: 1.5,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.unit * 1.8,
+              ),
+              elevation: 0,
+            ),
+            child: widget.isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CustomPaint(
+                        size: const Size(20, 20),
+                        painter: _GoogleLogoPainter(),
+                      ),
+                      const SizedBox(width: AppSpacing.gutter),
+                      Text(
+                        'Sign in with Google',
+                        style: AppTextStyles.buttonText.copyWith(
+                          color: AppColors.onSurface,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
     );
   }
 }

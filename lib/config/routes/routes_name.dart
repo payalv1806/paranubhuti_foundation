@@ -6,6 +6,9 @@ import 'package:paranubhutifoundation/features/home/presentation/screens/profile
 //import 'package:paranubhutifoundation/features/home/presentation/screens/splash_screen.dart';
 import 'package:paranubhutifoundation/features/home/presentation/screens/voulenter.dart';
 
+import 'package:paranubhutifoundation/features/admin/presentation/screens/admin_dashboard_screen.dart';
+import 'package:paranubhutifoundation/features/donation/presentation/screen/my_certificates_screen.dart';
+
 class RoutesNames {
   //static const splash = '/';
   static const String homescreen = '/homescreen';
@@ -13,6 +16,8 @@ class RoutesNames {
   static const String volunter = '/volunter';
   static const String causes = '/causes';
   static const String profile = '/profile';
+  static const String adminDashboard = '/adminDashboard';
+  static const String myCertificates = '/myCertificates';
 
   static Map<String, WidgetBuilder> get routes => {
     //splash:(_) => SplashScreen(),
@@ -21,5 +26,7 @@ class RoutesNames {
     volunter: (_) => const VoulenterScreen(),
     causes: (_) => const CausesScreen(),
     profile: (_) => const ProfileScreen(),
+    adminDashboard: (_) => const AdminDashboardScreen(),
+    myCertificates: (_) => const MyCertificatesScreen(),
   };
 }
