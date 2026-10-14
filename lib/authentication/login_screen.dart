@@ -56,6 +56,20 @@ class _LoginScreenState extends State<LoginScreen>
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic),
     );
     _fadeController.forward();
+    _checkRedirectResult();
+  }
+
+  Future<void> _checkRedirectResult() async {
+    try {
+      final user = await _authService.handleRedirectResult();
+      if (user != null && mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+    } catch (_) {}
   }
 
   @override

@@ -1,4 +1,4 @@
-  import 'package:flutter/foundation.dart' show kIsWeb;
+  import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
   import 'package:firebase_auth/firebase_auth.dart';
   import 'package:cloud_firestore/cloud_firestore.dart';
   import 'package:google_sign_in/google_sign_in.dart';
@@ -131,7 +131,21 @@
       if (kIsWeb) {
         final GoogleAuthProvider googleProvider = GoogleAuthProvider();
         googleProvider.setCustomParameters({'prompt': 'select_account'});
-        userCredential = await _auth.signInWithPopup(googleProvider);
+        try {
+          userCredential = await _auth.signInWithPopup(googleProvider);
+        } on FirebaseAuthException catch (e) {
+          // If popup is blocked by the browser or cancelled by popup blocker, fall back to redirect
+          if (e.code == 'popup-blocked' ||
+              e.code == 'cancelled-popup-request' ||
+              e.code == 'popup-closed-by-user') {
+            await _auth.signInWithRedirect(googleProvider);
+            return null;
+          }
+          rethrow;
+        } catch (_) {
+          await _auth.signInWithRedirect(googleProvider);
+          return null;
+        }
       } else {
         final GoogleSignIn googleSignIn = GoogleSignIn();
         final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
@@ -158,6 +172,25 @@
       }
 
       return userCredential.user;
+    }
+
+    /// Handles completion of web redirect sign-in (if redirect flow was triggered).
+    Future<User?> handleRedirectResult() async {
+      if (!kIsWeb) return null;
+      try {
+        final result = await _auth.getRedirectResult();
+        if (result.user != null) {
+          await _ensureUserDocument(
+            result.user!,
+            isNewUser: result.additionalUserInfo?.isNewUser ?? false,
+            name: result.user!.displayName,
+          );
+          return result.user;
+        }
+      } catch (e) {
+        debugPrint('Google Redirect Result Error: $e');
+      }
+      return null;
     }
 
     // ---------------------------------------------------------------------
