@@ -1,0 +1,24 @@
+[build]
+  publish = "build/web"
+  command = """
+    if [ ! -d "flutter" ]; then
+      git clone https://github.com/flutter/flutter.git -b stable --depth 1
+    fi
+    export PATH="$PATH:`pwd`/flutter/bin"
+    flutter doctor -v
+    flutter pub get
+    flutter build web --release
+  """
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
