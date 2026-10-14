@@ -7,7 +7,7 @@
     export PATH="$PATH:`pwd`/flutter/bin"
     flutter doctor -v
     flutter pub get
-    flutter build web --release
+    flutter build web --release --base-href /
   """
 
 [[redirects]]
