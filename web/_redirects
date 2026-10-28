@@ -1,1 +1,4 @@
-/*    /index.html   200
+/api/payment/create-order   /.netlify/functions/create-order   200
+/api/payment/verify-payment  /.netlify/functions/verify-payment  200
+/api/payment/config         /.netlify/functions/config         200
+/*                          /index.html                        200

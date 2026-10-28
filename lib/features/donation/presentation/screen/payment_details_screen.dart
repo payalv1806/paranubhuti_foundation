@@ -75,6 +75,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
 
     await _paymentService.startDonation(
       causeId: widget.causeId,
+      causeTitle: widget.causeTitle,
       amount: widget.amount,
       anonymous: _isAnonymous,
       contactPhone: user?.phoneNumber,

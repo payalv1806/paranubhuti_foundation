@@ -10,6 +10,26 @@
     flutter build web --release --base-href /
   """
 
+[functions]
+  directory = "netlify/functions"
+
+# API Redirects to Netlify Serverless Functions
+[[redirects]]
+  from = "/api/payment/create-order"
+  to = "/.netlify/functions/create-order"
+  status = 200
+
+[[redirects]]
+  from = "/api/payment/verify-payment"
+  to = "/.netlify/functions/verify-payment"
+  status = 200
+
+[[redirects]]
+  from = "/api/payment/config"
+  to = "/.netlify/functions/config"
+  status = 200
+
+# SPA fallback redirect for Flutter Web
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -18,7 +38,8 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options = "DENY"
+    X-Frame-Options = "SAMEORIGIN"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"

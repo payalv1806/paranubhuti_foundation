@@ -1,0 +1,16 @@
+{
+  "name": "paranubhuti-foundation-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Pranubhuti Foundation payment orders and signature verification",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "razorpay": "^2.9.4"
+  }
+}

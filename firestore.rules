@@ -65,9 +65,14 @@ service cloud.firestore {
     // Donations Collection
     // -------------------------------------------------------------------------
     match /donations/{donationId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthorizedAdmin();
+      allow read: if isAuthenticated() || (resource != null && resource.data.anonymous == true);
+      allow create: if isAuthenticated() || (request.resource.data.anonymous == true);
+      allow update: if isAuthorizedAdmin() || (
+        isAuthenticated() && resource.data.userId == request.auth.uid
+      ) || (
+        resource.data.anonymous == true && request.resource.data.paymentStatus in ['completed', 'failed']
+      );
+      allow delete: if isAuthorizedAdmin();
     }
 
     // -------------------------------------------------------------------------
@@ -75,21 +80,23 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
     match /causes/{causeId} {
       allow read: if true;
-      allow write: if isAuthorizedAdmin();
+      // Admin has full write access; donors can atomically increment totalRaised on donations
+      allow update: if isAuthorizedAdmin() || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalRaised'])
+      );
+      allow create, delete: if isAuthorizedAdmin();
     }
 
     // -------------------------------------------------------------------------
     // Certificates Collection
     // -------------------------------------------------------------------------
-    // Users can read certificates issued to them; admin can read/manage all.
-    // Creation permitted for authenticated users for their own verified donations.
+    // Certificates can be viewed by their recipient or verified publicly.
+    // Creation permitted for authenticated donors or anonymous gift issuance.
     // Update is strictly disallowed to prevent tampering with donation amount or metadata.
     match /certificates/{certId} {
-      allow read: if isAuthenticated() && (
-        resource == null || resource.data.userId == request.auth.uid || isAuthorizedAdmin()
-      );
-      allow create: if isAuthenticated() && (
-        request.resource.data.userId == request.auth.uid || isAuthorizedAdmin()
+      allow read: if true;
+      allow create: if isAuthenticated() || isAuthorizedAdmin() || (
+        request.resource.data.userId == '' || request.resource.data.donorName != null
       );
       allow update: if false;
       allow delete: if isAuthorizedAdmin();

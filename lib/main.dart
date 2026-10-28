@@ -5,9 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'authentication/login_screen.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '/features/home/presentation/screens/home_screen.dart';
 import '/features/home/presentation/screens/splash_screen.dart';
 import '/config/routes/routes_name.dart';
+import 'services/auth_service.dart';
 
 
 void main() async {
@@ -60,7 +62,14 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _runSplashDelay() async {
-    // Minimum splash duration — tweak this to whatever feels right (in ms).
+    if (kIsWeb) {
+      try {
+        await AuthService().handleRedirectResult();
+      } catch (e) {
+        debugPrint('OAuth redirect result error on web: $e');
+      }
+    }
+    // Minimum splash duration
     await Future.delayed(const Duration(milliseconds: 1800));
     if (mounted) setState(() => _showSplash = false);
   }
