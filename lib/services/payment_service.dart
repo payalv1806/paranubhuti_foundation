@@ -13,7 +13,7 @@ import 'package:paranubhutifoundation/services/certificate_service.dart';
 /// key only after testing is complete (Razorpay dashboard → Live Mode).
 class PaymentService {
   // 👉 Replace with your Razorpay Test/Live Key ID (Dashboard → API Keys).
-  static const String razorpayKeyId = 'rzp_live_dxVrrau5F2oLZR';
+  static const String razorpayKeyId = 'rzp_test_TtLTtbKxe7GUIK';
 
   final Razorpay _razorpay = Razorpay();
   String? _pendingDonationId;
