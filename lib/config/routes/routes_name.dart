@@ -8,6 +8,8 @@ import 'package:paranubhutifoundation/features/home/presentation/screens/voulent
 
 import 'package:paranubhutifoundation/features/admin/presentation/screens/admin_dashboard_screen.dart';
 import 'package:paranubhutifoundation/features/donation/presentation/screen/my_certificates_screen.dart';
+import 'package:paranubhutifoundation/features/home/presentation/screens/all_fundraisers_screen.dart';
+import 'package:paranubhutifoundation/features/home/presentation/screens/privacy_security_screen.dart';
 
 class RoutesNames {
   //static const splash = '/';
@@ -18,6 +20,8 @@ class RoutesNames {
   static const String profile = '/profile';
   static const String adminDashboard = '/adminDashboard';
   static const String myCertificates = '/myCertificates';
+  static const String allFundraisers = '/allFundraisers';
+  static const String privacySecurity = '/privacySecurity';
 
   static Map<String, WidgetBuilder> get routes => {
     //splash:(_) => SplashScreen(),
@@ -28,5 +32,7 @@ class RoutesNames {
     profile: (_) => const ProfileScreen(),
     adminDashboard: (_) => const AdminDashboardScreen(),
     myCertificates: (_) => const MyCertificatesScreen(),
+    allFundraisers: (_) => const AllFundraisersScreen(),
+    privacySecurity: (_) => const PrivacySecurityScreen(),
   };
 }

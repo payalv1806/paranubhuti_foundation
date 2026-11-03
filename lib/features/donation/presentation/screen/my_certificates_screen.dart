@@ -166,14 +166,18 @@ class _CertificateItemCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Text(
-                  'Issued: ${_formatDate(certificate.issuedAt)}',
-                  style: AppTextStyles.bodyMd.copyWith(
-                    fontSize: 12,
-                    color: AppColors.onSurfaceVariant,
+                Expanded(
+                  child: Text(
+                    'Issued: ${_formatDate(certificate.issuedAt)}',
+                    style: AppTextStyles.bodyMd.copyWith(
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: () {
                     Navigator.push(
@@ -183,11 +187,14 @@ class _CertificateItemCard extends StatelessWidget {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.visibility_rounded, size: 16, color: AppColors.primary),
+                  icon: const Icon(Icons.visibility_rounded, size: 15, color: AppColors.primary),
                   label: const Text('View & Download'),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.primary,
-                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
                   ),
                 ),
               ],

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,6 +16,7 @@ import 'package:paranubhutifoundation/features/admin/presentation/screens/admin_
 import 'package:paranubhutifoundation/services/certificate_service.dart';
 import 'package:paranubhutifoundation/features/donation/presentation/screen/my_certificates_screen.dart';
 import 'package:paranubhutifoundation/features/donation/presentation/screen/certificate_view_screen.dart';
+import 'privacy_security_screen.dart';
 
 /// Profile screen — user info, stats (total raised / causes led), their
 /// registered birthdays, recent donations, and account settings.
@@ -56,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
-  Future<void> _openEditProfile(String currentName, String? currentPhone, String? currentAvatarIcon) async {
+  Future<void> _openEditProfile(String currentName, String? currentPhone, String? currentAvatarIcon, String? currentPhotoUrl) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -64,6 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           currentName: currentName,
           currentPhone: currentPhone,
           currentAvatarIcon: currentAvatarIcon,
+          currentPhotoUrl: currentPhotoUrl,
         ),
       ),
     );
@@ -163,6 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               final name = userData?['name'] as String? ?? 'Your Name';
               final phone = userData?['phone'] as String? ?? FirebaseAuth.instance.currentUser?.phoneNumber;
               final avatarIcon = userData?['avatarIcon'] as String? ?? 'person';
+              final photoUrl = userData?['photoUrl'] as String?;
 
               return ListView(
                 padding: const EdgeInsets.symmetric(
@@ -174,7 +178,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                     name: name,
                     phone: phone,
                     avatarIcon: avatarIcon,
-                    onEditTap: () => _openEditProfile(name, phone, avatarIcon),
+                    photoUrl: photoUrl,
+                    onEditTap: () => _openEditProfile(name, phone, avatarIcon, photoUrl),
                   ),
 
                   const SizedBox(height: AppSpacing.sectionGap),
@@ -300,18 +305,35 @@ class _ProfileScreenState extends State<ProfileScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('My Recent Donations', style: AppTextStyles.headlineMd.copyWith(fontSize: 22)),
+                      Expanded(
+                        child: Text(
+                          'My Recent Donations',
+                          style: AppTextStyles.headlineMd.copyWith(fontSize: 19),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
                       TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
                         onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (_) => const MyCertificatesScreen()),
                           );
                         },
-                        icon: const Icon(Icons.card_membership_rounded, size: 16, color: AppColors.primary),
+                        icon: const Icon(Icons.card_membership_rounded, size: 15, color: AppColors.primary),
                         label: Text(
-                          'My Certificates',
-                          style: AppTextStyles.bodyMd.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13),
+                          'Certificates',
+                          style: AppTextStyles.bodyMd.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                          ),
                         ),
                       ),
                     ],
@@ -446,7 +468,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                           icon: Icons.shield_outlined,
                           title: 'Privacy & Security',
                           onTap: () {
-                            // TODO: navigate to a Privacy & Security screen
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const PrivacySecurityScreen()),
+                            );
                           },
                         ),
                         const Divider(height: 1),
@@ -498,14 +523,32 @@ class _ProfileHeader extends StatelessWidget {
   final String name;
   final String? phone;
   final String avatarIcon;
+  final String? photoUrl;
   final VoidCallback onEditTap;
 
   const _ProfileHeader({
     required this.name,
     this.phone,
     required this.avatarIcon,
+    this.photoUrl,
     required this.onEditTap,
   });
+
+  ImageProvider? _buildImageProvider() {
+    if (photoUrl == null || photoUrl!.trim().isEmpty) return null;
+    final url = photoUrl!.trim();
+    if (url.startsWith('data:image')) {
+      try {
+        final b64 = url.split(',').last;
+        return MemoryImage(base64Decode(b64));
+      } catch (_) {
+        return null;
+      }
+    } else if (url.startsWith('http')) {
+      return NetworkImage(url);
+    }
+    return null;
+  }
 
   static IconData _iconFor(String id) {
     switch (id) {
@@ -553,7 +596,10 @@ class _ProfileHeader extends StatelessWidget {
                 child: CircleAvatar(
                   radius: 46,
                   backgroundColor: AppColors.surfaceContainerLowest,
-                  child: Icon(_iconFor(avatarIcon), size: 46, color: AppColors.primary),
+                  backgroundImage: _buildImageProvider(),
+                  child: _buildImageProvider() == null
+                      ? Icon(_iconFor(avatarIcon), size: 46, color: AppColors.primary)
+                      : null,
                 ),
               ),
             ),
@@ -937,12 +983,23 @@ class _DonationRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                  title,
+                  style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 2),
-                Text(dateLabel, style: AppTextStyles.bodyMd.copyWith(fontSize: 12, color: AppColors.onSurfaceVariant)),
+                Text(
+                  dateLabel,
+                  style: AppTextStyles.bodyMd.copyWith(fontSize: 12, color: AppColors.onSurfaceVariant),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
+          const SizedBox(width: 6),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [

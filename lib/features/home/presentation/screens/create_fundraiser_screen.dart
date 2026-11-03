@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:paranubhutifoundation/features/home/presentation/widgets/fundraiser_poster_widget.dart';
 
 import 'package:paranubhutifoundation/core/theme/app_colors.dart';
 import 'package:paranubhutifoundation/core/theme/app_text_styles.dart';
@@ -172,6 +173,17 @@ class _CreateFundraiserScreenState
     });
 
     try {
+      String? userAvatarIcon;
+      String? userPhotoUrl = user.photoURL;
+      try {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          final uData = userDoc.data();
+          userAvatarIcon = uData?['avatarIcon'] as String?;
+          userPhotoUrl = (uData?['photoUrl'] as String?) ?? userPhotoUrl;
+        }
+      } catch (_) {}
+
       final docRef = await FirebaseFirestore.instance
           .collection('fundraisers')
           .add({
@@ -186,6 +198,8 @@ class _CreateFundraiserScreenState
         'celebrationDate': _celebrationDate != null
             ? Timestamp.fromDate(_celebrationDate!)
             : null,
+        'avatarIcon': userAvatarIcon ?? 'cake',
+        'photoUrl': userPhotoUrl,
         'status': 'active',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -302,7 +316,7 @@ class _CreateFundraiserScreenState
       setState(() {
         _errorMessage =
         'Your fundraiser is saved, but the donation link '
-            'could not be generated. Please try again.';
+            'could not be generated: $e';
       });
 
       debugPrint('Payment link error: $e');
@@ -323,6 +337,26 @@ class _CreateFundraiserScreenState
       setState(() {
         _errorMessage = 'Generate the donation link first.';
       });
+      return;
+    }
+
+    final fundraiserId = _createdFundraiserId;
+    if (fundraiserId != null) {
+      final user = FirebaseAuth.instance.currentUser;
+      showFundraiserPosterModal(
+        context: context,
+        fundraiserId: fundraiserId,
+        data: {
+          'title': _titleController.text.trim(),
+          'creatorName': user?.displayName ?? 'Supporter',
+          'causeTitle': _currentCause['title'],
+          'causeId': _selectedCauseId,
+          'goalAmount': _finalGoal,
+          'totalRaised': 0.0,
+          'story': _messageController.text.trim(),
+          'razorpayPaymentLink': link,
+        },
+      );
       return;
     }
 

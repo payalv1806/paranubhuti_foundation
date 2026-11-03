@@ -4,6 +4,7 @@ import 'package:paranubhutifoundation/core/theme/app_text_styles.dart';
 import 'package:paranubhutifoundation/core/theme/app_theme.dart';
 import 'package:paranubhutifoundation/models/certificate_model.dart';
 import 'package:paranubhutifoundation/services/certificate_service.dart';
+import 'package:paranubhutifoundation/services/poster_generator_service.dart';
 
 class CertificateViewScreen extends StatefulWidget {
   final CertificateModel certificate;
@@ -16,7 +17,44 @@ class CertificateViewScreen extends StatefulWidget {
 
 class _CertificateViewScreenState extends State<CertificateViewScreen> {
   final CertificateService _certificateService = CertificateService();
+  final GlobalKey _certBoundaryKey = GlobalKey();
   bool _isDownloading = false;
+  bool _isSharingBadge = false;
+
+  Future<void> _handleShareBadgeImage() async {
+    setState(() => _isSharingBadge = true);
+    try {
+      final pngBytes = await PosterGeneratorService.capturePng(_certBoundaryKey);
+      if (pngBytes != null) {
+        final cert = widget.certificate;
+        final shareMessage =
+            '🎖️ I made a verified charitable impact with Paranubhuti Foundation!\n\n'
+            'Contributed ₹${cert.amount.toStringAsFixed(0)} towards "${cert.causeTitle}" through Birthday for a Cause.\n\n'
+            'Turn your special day into a gift of hope: https://pages.razorpay.com/pl_TubwVN0NmxjOSy/view';
+
+        await PosterGeneratorService.sharePosterWithLink(
+          pngBytes: pngBytes,
+          filename: 'donor_certificate_${cert.id.replaceAll(RegExp(r"[^a-zA-Z0-9]"), "_")}',
+          shareMessage: shareMessage,
+          subject: 'Official Donation Certificate - ${cert.donorName}',
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not generate certificate image.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error sharing badge: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSharingBadge = false);
+    }
+  }
 
   Future<void> _handleDownload() async {
     setState(() => _isDownloading = true);
@@ -87,33 +125,54 @@ class _CertificateViewScreenState extends State<CertificateViewScreen> {
             Row(
               children: [
                 Expanded(
+                  flex: 3,
                   child: ElevatedButton.icon(
-                    onPressed: _isDownloading ? null : _handleDownload,
-                    icon: _isDownloading
+                    onPressed: _isSharingBadge ? null : _handleShareBadgeImage,
+                    icon: _isSharingBadge
                         ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Icon(Icons.picture_as_pdf_rounded, size: 20),
-                    label: const Text('Download / Print PDF'),
+                        : const Icon(Icons.share_rounded, size: 18),
+                    label: Text(_isSharingBadge ? 'Generating...' : 'Share Badge / Story'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: const Color(0xFF6750A4),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton.icon(
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton.icon(
+                    onPressed: _isDownloading ? null : _handleDownload,
+                    icon: _isDownloading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                    label: const Text('PDF'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
                   onPressed: _handleShareWhatsApp,
-                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
-                  label: const Text('WhatsApp'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366)),
+                  tooltip: 'WhatsApp Text',
+                  style: IconButton.styleFrom(
+                    padding: const EdgeInsets.all(12),
+                    backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.1),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                   ),
                 ),
@@ -122,8 +181,10 @@ class _CertificateViewScreenState extends State<CertificateViewScreen> {
 
             const SizedBox(height: AppSpacing.gutter * 1.5),
 
-            // Visual Certificate Card
-            Container(
+            // Visual Certificate Card (wrapped in RepaintBoundary for instant image capture)
+            RepaintBoundary(
+              key: _certBoundaryKey,
+              child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -363,6 +424,7 @@ class _CertificateViewScreenState extends State<CertificateViewScreen> {
                 ),
               ),
             ),
+          ),
 
             const SizedBox(height: AppSpacing.sectionGap),
           ],

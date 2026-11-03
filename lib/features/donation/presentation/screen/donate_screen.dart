@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:paranubhutifoundation/core/theme/app_colors.dart';
 import 'package:paranubhutifoundation/core/theme/app_text_styles.dart';
 import 'package:paranubhutifoundation/core/theme/app_theme.dart';
 import 'package:paranubhutifoundation/models/cause_model.dart';
+import 'package:paranubhutifoundation/services/payment_service.dart';
 import 'package:paranubhutifoundation/shared/widgets/appbar_screen.dart';
-import 'payment_details_screen.dart';
+import 'thank_you_screen.dart';
 
 /// Donate screen — "Make a Birthday Gift".
 /// Vertical list of cause cards (icon badge + title + description + radio),
 /// fetched live from Firestore `causes`, followed by a gift-amount picker
-/// (3 circular presets + custom amount), then "Continue to Payment".
+/// (3 circular presets + custom amount), anonymous donation toggle, and
+/// direct 1-tap Razorpay native payment checkout (bypassing redundant payment details page).
 class DonateScreen extends StatefulWidget {
   final String? preselectedCauseId;
 
@@ -31,15 +34,25 @@ class _DonateScreenState extends State<DonateScreen> {
   double? _selectedPresetAmount;
   final TextEditingController _customAmountController = TextEditingController();
 
+  bool _isAnonymous = false;
+  bool _isProcessing = false;
+  CauseModel? _activeCause;
+
+  late final PaymentService _paymentService;
+
   @override
   void initState() {
     super.initState();
     _selectedCauseId = widget.preselectedCauseId;
+    _paymentService = PaymentService()
+      ..onSuccess = _onPaymentSuccess
+      ..onError = _onPaymentError;
   }
 
   @override
   void dispose() {
     _customAmountController.dispose();
+    _paymentService.dispose();
     super.dispose();
   }
 
@@ -49,7 +62,11 @@ class _DonateScreenState extends State<DonateScreen> {
     return _selectedPresetAmount;
   }
 
-  bool get _canContinue => _selectedCauseId != null && _finalAmount != null && _finalAmount! > 0;
+  bool get _canContinue =>
+      _selectedCauseId != null &&
+      _finalAmount != null &&
+      _finalAmount! >= 100 &&
+      !_isProcessing;
 
   void _selectPreset(double amount) {
     setState(() {
@@ -58,17 +75,48 @@ class _DonateScreenState extends State<DonateScreen> {
     });
   }
 
-  void _onContinue(List<CauseModel> causes) {
+  Future<void> _onProceedToPay(List<CauseModel> causes) async {
+    if (!_canContinue) return;
+
     final cause = causes.firstWhere((c) => c.id == _selectedCauseId);
-    Navigator.push(
+    _activeCause = cause;
+
+    setState(() => _isProcessing = true);
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    await _paymentService.startDonation(
+      causeId: cause.id,
+      amount: _finalAmount!,
+      anonymous: _isAnonymous,
+      contactPhone: user?.phoneNumber,
+      contactEmail: user?.email,
+    );
+  }
+
+  void _onPaymentSuccess(String donationId) {
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => PaymentDetailsScreen(
-          causeId: cause.id,
-          causeCategory: cause.tag,
-          causeTitle: cause.title,
-          amount: _finalAmount!,
+        builder: (_) => ThankYouScreen(
+          causeTitle: _activeCause?.title ?? 'Birthday for a Cause',
+          amount: _finalAmount ?? 100,
+          anonymous: _isAnonymous,
+          donationId: donationId,
         ),
+      ),
+    );
+  }
+
+  void _onPaymentError(String message) {
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Payment cancelled or failed: $message'),
+        backgroundColor: AppColors.error,
       ),
     );
   }
@@ -113,9 +161,7 @@ class _DonateScreenState extends State<DonateScreen> {
               );
             }
 
-            // Default to the preselected cause if it exists in the loaded
-            // list, otherwise the first cause, but only once (don't stomp on
-            // a selection the user already made by tapping a different card).
+            // Default to preselected cause if exists
             _selectedCauseId ??= causes.any((c) => c.id == widget.preselectedCauseId)
                 ? widget.preselectedCauseId
                 : causes.first.id;
@@ -139,7 +185,7 @@ class _DonateScreenState extends State<DonateScreen> {
                 const SizedBox(height: AppSpacing.gutter),
 
                 ...causes.map(
-                      (cause) => Padding(
+                  (cause) => Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.gutter),
                     child: _CauseListTile(
                       cause: cause,
@@ -163,11 +209,11 @@ class _DonateScreenState extends State<DonateScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: _presetAmounts
                               .map((option) => _AmountCircle(
-                            option: option,
-                            selected: _selectedPresetAmount == option.amount &&
-                                _customAmountController.text.isEmpty,
-                            onTap: () => _selectPreset(option.amount),
-                          ))
+                                    option: option,
+                                    selected: _selectedPresetAmount == option.amount &&
+                                        _customAmountController.text.isEmpty,
+                                    onTap: () => _selectPreset(option.amount),
+                                  ))
                               .toList(),
                         ),
                         const SizedBox(height: AppSpacing.sectionGap - AppSpacing.unit),
@@ -177,7 +223,53 @@ class _DonateScreenState extends State<DonateScreen> {
                           controller: _customAmountController,
                           keyboardType: TextInputType.number,
                           onChanged: (_) => setState(() {}),
-                          decoration: const InputDecoration(hintText: 'Enter other amount'),
+                          decoration: InputDecoration(
+                            hintText: 'Enter other amount (min ₹100)',
+                            errorText: (_customAmountController.text.isNotEmpty &&
+                                    (double.tryParse(_customAmountController.text) ?? 0) < 100)
+                                ? 'Minimum donation is ₹100'
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.gutter),
+
+                // Anonymous Donation Option
+                InkWell(
+                  onTap: () => setState(() => _isAnonymous = !_isAnonymous),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: _isAnonymous,
+                          activeColor: AppColors.primary,
+                          onChanged: (val) => setState(() => _isAnonymous = val ?? false),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Make donation anonymous',
+                                style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600, fontSize: 13.5),
+                              ),
+                              Text(
+                                'Your name will not appear on public donor lists',
+                                style: AppTextStyles.bodyMd.copyWith(fontSize: 11.5, color: AppColors.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -189,15 +281,27 @@ class _DonateScreenState extends State<DonateScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _canContinue ? () => _onContinue(causes) : null,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Text('Continue to Payment'),
-                        SizedBox(width: AppSpacing.unit),
-                        Icon(Icons.arrow_forward_rounded, size: 18),
-                      ],
-                    ),
+                    onPressed: _canContinue ? () => _onProceedToPay(causes) : null,
+                    child: _isProcessing
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.lock_rounded, size: 16),
+                              const SizedBox(width: 8),
+                              Text(
+                                _finalAmount != null
+                                    ? 'Proceed to Pay ₹${_finalAmount!.toInt()}'
+                                    : 'Continue to Payment',
+                              ),
+                              const SizedBox(width: AppSpacing.unit),
+                              const Icon(Icons.arrow_forward_rounded, size: 16),
+                            ],
+                          ),
                   ),
                 ),
 
@@ -242,21 +346,46 @@ class _CauseListTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: cause.badgeColor,
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                color: cause.badgeColor.withValues(alpha: 0.18),
+                shape: BoxShape.circle,
               ),
-              child: Icon(cause.icon, color: AppColors.onSurface, size: 22),
+              child: Icon(cause.icon, color: cause.badgeColor, size: 22),
             ),
             const SizedBox(width: AppSpacing.gutter),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(cause.title, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: cause.badgeColor.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Text(
+                          cause.tag.toUpperCase(),
+                          style: AppTextStyles.labelCaps.copyWith(color: cause.badgeColor, fontSize: 10),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.unit),
+                      Expanded(
+                        child: Text(
+                          cause.title,
+                          style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.unit / 2),
                   Text(
                     cause.description ?? '',
-                    style: AppTextStyles.bodyMd.copyWith(fontSize: 13, color: AppColors.onSurfaceVariant),
+                    style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant, fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -273,13 +402,6 @@ class _CauseListTile extends StatelessWidget {
   }
 }
 
-class _AmountOption {
-  final double amount;
-  final String label;
-  const _AmountOption({required this.amount, required this.label});
-}
-
-/// Circular selectable gift-amount button (e.g. "$50 / Popular").
 class _AmountCircle extends StatelessWidget {
   final _AmountOption option;
   final bool selected;
@@ -289,38 +411,48 @@ class _AmountCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Column(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: selected ? AppColors.primaryContainer.withValues(alpha: 0.25) : AppColors.surfaceContainerLowest,
-              border: Border.all(color: selected ? AppColors.primary : AppColors.outlineVariant, width: selected ? 2 : 1),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '₹${option.amount.toStringAsFixed(0)}',
-              style: AppTextStyles.bodyMd.copyWith(
-                fontWeight: FontWeight.w700,
-                color: selected ? AppColors.primary : AppColors.onSurface,
+      borderRadius: BorderRadius.circular(AppRadius.full),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 76,
+        height: 76,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primaryContainer : AppColors.surfaceContainerLowest,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.outlineVariant,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '₹${option.amount.toInt()}',
+              style: AppTextStyles.headlineMd.copyWith(
+                fontSize: 16,
+                color: selected ? AppColors.onPrimaryContainer : AppColors.onSurface,
               ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            option.label,
-            style: AppTextStyles.labelCaps.copyWith(
-              fontSize: 10,
-              color: selected ? AppColors.primary : AppColors.onSurfaceVariant,
+            Text(
+              option.label,
+              style: AppTextStyles.labelCaps.copyWith(
+                fontSize: 9,
+                color: selected ? AppColors.primary : AppColors.onSurfaceVariant,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+
+class _AmountOption {
+  final double amount;
+  final String label;
+
+  const _AmountOption({required this.amount, required this.label});
 }

@@ -7,13 +7,15 @@ import 'package:paranubhutifoundation/shared/widgets/bottam_navigation_screen.da
 import 'package:paranubhutifoundation/core/theme/app_colors.dart';
 import 'package:paranubhutifoundation/core/theme/app_text_styles.dart';
 import 'package:paranubhutifoundation/core/theme/app_theme.dart';
-import 'package:paranubhutifoundation/config/routes/routes_name.dart';
+
 
 // 👇 adjust these paths to wherever these screens actually live in your project
 import 'package:paranubhutifoundation/features/home/presentation/screens/register_birthday_screen.dart';
 import 'package:paranubhutifoundation/features/donation/presentation/screen/donate_screen.dart';
 import 'package:paranubhutifoundation/features/home/presentation/screens/notification_screen.dart';
 import 'package:paranubhutifoundation/features/home/presentation/screens/create_fundraiser_screen.dart';
+import 'package:paranubhutifoundation/features/home/presentation/widgets/active_fundraiser_card.dart';
+import 'package:paranubhutifoundation/features/home/presentation/screens/all_fundraisers_screen.dart';
 import 'package:paranubhutifoundation/services/admin_service.dart';
 import 'package:paranubhutifoundation/features/admin/presentation/screens/admin_dashboard_screen.dart';
 
@@ -188,44 +190,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
             const SizedBox(height: AppSpacing.sectionGap),
 
-            _staggerChild(5, Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Featured Cause', style: AppTextStyles.headlineMd),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, RoutesNames.causes);
-                      },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'See All',
-                            style: AppTextStyles.bodyMd.copyWith(color: AppColors.primary),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.primary),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.gutter),
-
-                const _FeaturedCauseCard(
-                  tag: 'Education',
-                  imagePath: 'assets/images/education.jpg',
-                  title: 'Birthday Books for All',
-                  description:
-                  'Help us provide 1,000 books to children in underserved communities this month.',
-                  amountRaised: 4200,
-                  goalAmount: 5000,
-                ),
-              ],
-            )),
+            _staggerChild(5, const _ActiveFundraisersSection()),
 
             const SizedBox(height: AppSpacing.sectionGap),
           ],
@@ -1403,6 +1368,127 @@ class _LatestAnnouncementBanner extends StatelessWidget {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+}
+
+/// Active Fundraiser Section — displays the featured birthday fundraiser
+/// with image banner, real-time total raised, progress bars, Share, and Donate Now buttons,
+/// and a 'See All' button that navigates to AllFundraisersScreen.
+class _ActiveFundraisersSection extends StatelessWidget {
+  const _ActiveFundraisersSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('fundraisers')
+          .where('status', isEqualTo: 'active')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const SizedBox.shrink();
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        final Map<String, dynamic> fundraiserData;
+        final String fundraiserId;
+
+        if (docs.isNotEmpty) {
+          final featuredDoc = docs.first;
+          fundraiserId = featuredDoc.id;
+          fundraiserData = featuredDoc.data();
+        } else {
+          fundraiserId = 'sample_fundraiser';
+          fundraiserData = {
+            'title': 'Birthday Books for All',
+            'causeTitle': 'Education Support',
+            'causeId': 'education',
+            'story': 'Help us provide 1,000 books to children in underserved communities this month.',
+            'totalRaised': 4200.0,
+            'goalAmount': 5000.0,
+            'donorCount': 18,
+            'status': 'active',
+          };
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Birthday Fundraiser',
+                          style: AppTextStyles.headlineMd,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AllFundraisersScreen()),
+                    );
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'See All',
+                        style: AppTextStyles.bodyMd.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.primary),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.gutter),
+            ActiveFundraiserCard(
+              fundraiserId: fundraiserId,
+              data: fundraiserData,
+            ),
+            const SizedBox(height: AppSpacing.sectionGap),
+          ],
         );
       },
     );
