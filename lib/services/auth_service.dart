@@ -52,8 +52,8 @@
           if (e.code == 'billing-not-enabled' || msg.contains('BILLING_NOT_ENABLED')) {
             errorCallback('Firebase requires a Blaze plan for SMS OTP, or add test numbers in Firebase Console. You can also sign in with Email or Google.');
           } else if (e.code == 'unauthorized-domain' || msg.contains('unauthorized-domain') || msg.contains('domain')) {
-            final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'your-site.netlify.app';
-            errorCallback('Domain not authorized: Please add "$host" to Firebase Console > Authentication > Settings > Authorized domains.');
+            final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'paranubhutifoundation.netlify.app';
+            errorCallback('Domain not authorized: In Firebase project "birthday-for-a-cause-15940" (Project # 262684968346), please add "$host" and "netlify.app" under Authentication > Settings > Authorized domains.');
           } else {
             errorCallback(msg.isNotEmpty ? msg : 'Verification failed (${e.code})');
           }
@@ -135,11 +135,13 @@
         try {
           userCredential = await _auth.signInWithPopup(googleProvider);
         } on FirebaseAuthException catch (e) {
-          // If popup is blocked by the browser or cancelled by popup blocker, fall back to redirect
-          if (e.code == 'popup-blocked' ||
-              e.code == 'cancelled-popup-request' ||
-              e.code == 'popup-closed-by-user') {
+          // If popup is blocked by the browser, fall back to full page redirect
+          if (e.code == 'popup-blocked' || e.code == 'cancelled-popup-request') {
             await _auth.signInWithRedirect(googleProvider);
+            return null;
+          }
+          // User intentionally closed or cancelled popup
+          if (e.code == 'popup-closed-by-user' || e.code == 'canceled') {
             return null;
           }
           rethrow;

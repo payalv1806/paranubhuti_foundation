@@ -147,8 +147,8 @@ class _LoginScreenState extends State<LoginScreen>
         _setLoading(false);
         debugPrint('Phone Auth Error: $message');
         if (message.contains('unauthorized-domain') || message.contains('domain')) {
-          final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'your-site.netlify.app';
-          setState(() => _errorMessage = 'Domain not authorized in Firebase. Add "$host" to Firebase Authentication > Settings > Authorized domains.');
+          final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'paranubhutifoundation.netlify.app';
+          setState(() => _errorMessage = 'Domain not authorized: In Firebase project "birthday-for-a-cause-15940", add "$host" and "netlify.app" under Authentication > Settings > Authorized domains.');
         } else {
           setState(() => _errorMessage = message);
         }
@@ -212,8 +212,8 @@ class _LoginScreenState extends State<LoginScreen>
       case 'account-exists-with-different-credential':
         return 'An account already exists with this email using a different sign-in method.';
       case 'unauthorized-domain':
-        final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'your-site.netlify.app';
-        return 'Domain not authorized: Please add "$host" to Firebase Console > Authentication > Settings > Authorized domains.';
+        final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'paranubhutifoundation.netlify.app';
+        return 'Domain not authorized: In Firebase project "birthday-for-a-cause-15940" (Project # 262684968346), please add "$host" and "netlify.app" under Authentication > Settings > Authorized domains.';
       case 'operation-not-allowed':
         return 'This sign-in method is not enabled in Firebase Console. Please enable it under Authentication > Sign-in method.';
       case 'network-request-failed':
